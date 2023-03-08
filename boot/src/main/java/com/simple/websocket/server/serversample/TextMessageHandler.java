@@ -1,5 +1,6 @@
 package com.simple.websocket.server.serversample;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -7,6 +8,7 @@ import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
@@ -15,6 +17,8 @@ import com.google.gson.Gson;
 
 @Component
 public class TextMessageHandler extends TextWebSocketHandler {
+
+    private Timer timer = new Timer("Refresher");
 
     @Override
     public void handleTextMessage(WebSocketSession session, TextMessage message) {
@@ -28,11 +32,9 @@ public class TextMessageHandler extends TextWebSocketHandler {
         final Gson gson = new Gson();
 
         final List<DataPayload> list = new ArrayList<>();
-        list.add(new DataPayload("1", "user1", "lastName1", "name1", "tx1", "description1", "Pendiente", "0"));
-        final AtomicInteger value = new AtomicInteger(1);
+        final AtomicInteger value = new AtomicInteger(0);
 
         session.sendMessage(new TextMessage(gson.toJson(list)));
-
        
         // start timer and keep sending updates
         final TimerTask task = new TimerTask() {
@@ -45,10 +47,26 @@ public class TextMessageHandler extends TextWebSocketHandler {
                 } catch (Exception e) {
                     //
                 }
+
+                // cerramos la conexion  para ver como lo maneja el front
+                if (ind == 5) {
+                    try {
+                        session.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
                 
             }
         };
-        new Timer("Timer").schedule(task, 1000, 5000);
+        this.timer.schedule(task, 1000, 2000);
+
     }
-    
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+        this.timer.cancel();
+        this.timer = new Timer("Refresher");
+    }
+
 }
